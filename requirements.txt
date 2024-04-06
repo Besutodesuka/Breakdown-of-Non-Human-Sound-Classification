@@ -1,0 +1,6 @@
+dash
+numpy
+soundfile
+dash-recording-components
+dash_mantine_components
+dash_iconify 
