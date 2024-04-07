@@ -1,7 +1,7 @@
 """Example form for receiving sound from the microphone"""
 # credit to https://pypi.org/project/dash-recording-components/
 import dash
-from dash import html, clientside_callback
+from dash import html, dcc
 from dash.dependencies import Input, Output, State
 from dash_recording_components import AudioRecorder
 import soundfile as sf
@@ -11,14 +11,38 @@ import base64
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
-app = dash.Dash(__name__)
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
     html.H1("Audio Recorder and Player"),
-    dmc.Switch(id="record-switch", label="Start record", checked=False),
+    dmc.Switch(id="record-switch", label="Start record", checked=False,
+    offLabel=DashIconify(icon="tabler:microphone-off", width=20),
+    onLabel=DashIconify(icon="mdi:microphone", width=20),
+    size="lg",
+    color="green",
+    ),
     html.Div(id="audio-output"),
     html.Div(id="dummy-output", style={"display": "none"}),
-    AudioRecorder(id="audio-recorder")
+    AudioRecorder(id="audio-recorder"),
+    #for uploading any files
+
+    # dcc.Upload(html.Button('Upload File')),
+    # html.Hr(),
+    # dcc.Upload(html.A('Upload File')),
+    # html.Hr(),
+    dcc.Upload([
+        'Drag and Drop or ',
+        html.A('Select a File')
+    ], style={
+        'width': '100%',
+        'height': '60px',
+        'lineHeight': '60px',
+        'borderWidth': '1px',
+        'borderStyle': 'dashed',
+        'borderRadius': '5px',
+        'textAlign': 'center'
+    })
 ])
 
 audio_samples = []  
@@ -68,7 +92,6 @@ def update_audio(audio):
         # Update the audio samples with the new audio
         audio_samples += list(audio.values())
     return ""
-
 
 if __name__ == "__main__":
     app.run_server(debug=True)
