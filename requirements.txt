@@ -3,4 +3,9 @@ numpy
 soundfile
 dash-recording-components
 dash_mantine_components
-dash_iconify 
+dash_iconify
+timm==0.4.5
+torch
+torchaudio
+wget
+joblib
