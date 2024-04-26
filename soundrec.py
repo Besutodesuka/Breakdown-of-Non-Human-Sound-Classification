@@ -11,6 +11,8 @@ import base64
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
+audio_filepath = r"C:\Users\User\Documents\GitHub\Breakdown-of-Speaker-Diarization\ambient_sample.wav"
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
@@ -31,10 +33,17 @@ app.layout = html.Div([
     # html.Hr(),
     # dcc.Upload(html.A('Upload File')),
     # html.Hr(),
+    html.Audio(
+            id="audio-player",
+            controls=True,
+            src=audio_filepath,
+            style={"display": "block"},  # Make the player visible
+        ),
+        html.Button("Play Audio", id="play-button", n_clicks=0),
+
     dcc.Upload([
-        'Drag and Drop or ',
-        html.A('Select a File')
-    ], style={
+        'Drag and Drop or ', html.A('Select a File')],
+         style={
         'width': '100%',
         'height': '60px',
         'lineHeight': '60px',
@@ -42,7 +51,7 @@ app.layout = html.Div([
         'borderStyle': 'dashed',
         'borderRadius': '5px',
         'textAlign': 'center'
-    })
+        })
 ])
 
 audio_samples = []  
@@ -79,6 +88,14 @@ def play_audio(recorded):
                 return html.Audio(src=audio_src, controls=True)
     return ""
 
+@app.callback(
+    Output("audio-player", "prop_id"),  # Update a different property
+    [Input("play-button", "n_clicks")],
+)
+def play_audio(n_clicks):
+    if n_clicks % 2 == 1:
+        return "play"  # Play on odd clicks
+    return "pause"  # Pause on even clicks
 
 @app.callback(
     Output("dummy-output", "children"),
