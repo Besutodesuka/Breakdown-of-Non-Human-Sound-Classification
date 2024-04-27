@@ -4,6 +4,7 @@ import dash
 from dash import html, dcc
 from dash.dependencies import Input, Output, State
 from dash_recording_components import AudioRecorder
+import dash_bootstrap_components as dbc
 import soundfile as sf
 import numpy as np
 import io
@@ -13,61 +14,110 @@ from dash_iconify import DashIconify
 from inference import predict
 import torch, torchaudio
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 audio_samples = []  
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
+app.head = html.Link(rel='stylesheet', href='/assets/style.css')
 
 app.layout = html.Div([
-    html.H1("Audio Recorder and Player"),
-    dmc.Switch(id="record-switch", label="Start record", checked=False,
-    offLabel=DashIconify(icon="tabler:microphone-off", width=20),
-    onLabel=DashIconify(icon="mdi:microphone", width=20),
-    size="lg",
-    color="green",
+
+    # Header
+    html.Br(),
+    html.H1("Non-Human"),
+    html.H2("Sound Classification"),
+    html.Br(),
+
+    # Record
+    # html.Button(children='Start', id='record', n_clicks=0),
+    html.H5("Click to start recording"),
+    dmc.Switch(
+        id="record-switch", 
+        label="Start record", 
+        checked=False,
+        offLabel=DashIconify(icon="tabler:microphone-off", width=20),
+        onLabel=DashIconify(icon="mdi:microphone", width=20),
+        size="lg",
+        color="green",
     ),
+
+    # Play Record
+    html.Br(),
     html.Div(id="audio-output"),
     html.Div(id="dummy-output", style={"display": "none"}),
     AudioRecorder(id="audio-recorder"),
-    #for uploading any files
 
+    #for uploading any files
     # dcc.Upload(html.Button('Upload File')),
     # html.Hr(),
     # dcc.Upload(html.A('Upload File')),
     # html.Hr(),
-    dcc.Upload([
-        'Drag and Drop or ',
-        html.A('Select a File')
-    ], style={
-        'width': '100%',
-        'height': '60px',
-        'lineHeight': '60px',
-        'borderWidth': '1px',
-        'borderStyle': 'dashed',
-        'borderRadius': '5px',
-        'textAlign': 'center'
-    }),
-    html.Div(
-    [
+
+    # dcc.Upload([
+    #     'Drag and Drop or ',
+    #     html.A('Select a File')
+    # ], style={
+    #     'width': '100%',
+    #     'height': '60px',
+    #     'lineHeight': '60px',
+    #     'borderWidth': '1px',
+    #     'borderStyle': 'dashed',
+    #     'borderRadius': '5px',
+    #     'textAlign': 'center'
+    # }),
+
+    html.Div(id="audio-output"),
+
+    html.H5("Choose the duration to predict"),
+
+    # choose range
+    html.Div([
         dmc.RangeSlider(
             id="range-slider-callback",
             value=[0,len(audio_samples)],
             mb=5,
-            min=0, max=len(audio_samples), step=1,
+            min=0, 
+            max=len(audio_samples), 
+            step=1,
             minRange=3,
             maxRange=5,
         ),
         dmc.Text(id="range-slider-output"),
     ]),
-    dmc.Button("Predict", variant="gradient",id="predict-nonhuman"),
-    dmc.Text(id="nonhuman_result"),
-])
 
+    #Predict button
+    html.Br(),
+    dmc.Button("Predict", variant="gradient", id="predict-nonhuman"),
+
+    #Loading
+    dcc.Loading(
+        id="ls-loading", 
+        children=[html.Div(id="ls-loading-output")], 
+        type="circle", 
+        style={'margin-top': '8em'}
+    ),
+    dmc.Text(id="nonhuman_result"),
+], 
+style={'width' : '95%', 'margin' : 'auto'})
+
+
+# Record
+# @app.callback(Output('record', 'children'),
+#               Input('record', 'n_clicks'))
+
+# def displayClick(num_click):
+#     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+#     if 'record' in changed_id:
+#         if num_click%2==0:
+#             return True
+#         else:
+#            return False
+
+#Predict button
 @app.callback(
     Output("nonhuman_result", "children"),
     Output("predict-nonhuman", "n_clicks"),
+    Output("ls-loading-output", "children"),
     Input("predict-nonhuman", "n_clicks"),
-    Input("range-slider-callback", "value")
+    Input("range-slider-callback", "value"),
 )
 def get_non_human_pred(click, selected_time):
     if click > 0:
@@ -77,8 +127,8 @@ def get_non_human_pred(click, selected_time):
         #     sample = sample.repeat(2, 1)
         sf.write('nonhooman_sample.wav', np.array(sample), 16000)
         pred = predict('nonhooman_sample.wav')
-        return pred, 0
-    return "no result", 0
+        return pred, 0, None
+    return "no result", 0, None
 
 @app.callback(
     Output("range-slider-callback", "max"), Input("record-switch", "checked"),
@@ -125,7 +175,6 @@ def play_audio(recorded):
                 audio_src = f"data:audio/wav;base64,{wav_base64}"
                 return html.Audio(src=audio_src, controls=True)
     return ""
-
 
 @app.callback(
     Output("dummy-output", "children"),
