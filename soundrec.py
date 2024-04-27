@@ -15,7 +15,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
-    html.H1("Audio Recorder and Player"),
+    html.H1("Non-human Sound Classification"),
     dmc.Switch(id="record-switch", label="Start record", checked=False,
     offLabel=DashIconify(icon="tabler:microphone-off", width=20),
     onLabel=DashIconify(icon="mdi:microphone", width=20),
