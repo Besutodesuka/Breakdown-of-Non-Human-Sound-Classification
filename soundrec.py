@@ -72,7 +72,7 @@ def play_audio(recorded):
             audio_array = np.array(audio_samples)
             audio_samples = []  
             with io.BytesIO() as wav_buffer:
-                sf.write(wav_buffer, audio_array, 16000, format="WAV")
+                sf.write(wav_buffer, audio_array, 44100, format="WAV")
                 wav_bytes = wav_buffer.getvalue()
                 wav_base64 = base64.b64encode(wav_bytes).decode()
                 audio_src = f"data:audio/wav;base64,{wav_base64}"
