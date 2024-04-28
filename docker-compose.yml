@@ -1,0 +1,7 @@
+version: '3'
+services:
+  dash_app:
+    build: ./non-human-recognition
+    restart: always
+    volumes:
+      - "./non-human-recognition:/app"
