@@ -11,7 +11,7 @@ import io
 import base64
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
-from inference import predict
+from non_human_recognition.inference import predict
 import torch, torchaudio
 
 audio_samples = []  
