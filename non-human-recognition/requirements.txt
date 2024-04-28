@@ -1,0 +1,12 @@
+dash==2.16.1
+numpy
+soundfile
+dash-recording-components==1.0.3
+dash_mantine_components==0.12.1
+dash_iconify==0.1.2
+timm==0.4.5
+torch
+torchaudio
+wget
+joblib
+scikit-learn==1.2.2
