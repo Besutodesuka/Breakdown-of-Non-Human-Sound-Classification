@@ -15,6 +15,8 @@ from non_human_recognition.inference import predict
 import torch, torchaudio
 from functools import lru_cache
 from pathlib import Path
+import os
+from dash.exceptions import PreventUpdate
 
 audio_samples = []  
 app = dash.Dash(__name__)
@@ -23,12 +25,14 @@ app = dash.Dash(__name__)
 #get all recording
 SoundInput = Path(r"./SoundInput")
 
-@lru_cache(maxsize=None)
+# @lru_cache(maxsize=None)
 def get_recordings():
-    recordings = []
-    for filename in SoundInput.glob("*.wav"):
-        recordings.append({"label": filename.name, "value": filename.name})
-    return recordings
+    """Returns a list of .wav files in the specified directory."""
+    wav_files = [f for f in os.listdir(SoundInput) if f.endswith('.wav')]
+    print(wav_files)
+    return [{'label': f, 'value': f} for f in wav_files]
+
+init_recording = get_recordings()
 
 app.layout = dbc.Container([
     # Header
@@ -60,14 +64,15 @@ app.layout = dbc.Container([
             html.H3("or", )
             ],
          width=2),
-        dbc.Col(
+        dbc.Col([
                 dcc.Upload([
                     'Drag and Drop or ',
                     html.A('Select a File'),
                 ]
-                ,accept="wav"
-                , style={
-                    'width': '500px',
+                ,id="record-upload"
+                ,multiple=False  # Allow multiple files to be uploaded
+                ,accept='.wav'  # Only 
+                ,style={       'width': '500px',
                     'height': '60px',
                     'lineHeight': '60px',
                     'borderWidth': '1px',
@@ -75,17 +80,18 @@ app.layout = dbc.Container([
                     'borderRadius': '5px',
                     'textAlign': 'center'
                 }
-                 )
-        )
-    ], justify= "center"),
+        ),
+        html.Div(id="alert-message"),
+        ]),
     # dat selection
-    dbc.Row([
-    html.H3("Select file that you want to inferences on"),
+    
+    dbc.Row([html.H3("Select file that you want to inferences on"),]),
+    dmc.Button("refresh", variant="gradient", id="reload-file",),
     html.Div(
             [
                 dcc.Dropdown(
                     id="recording-dropdown",
-                    options=get_recordings(),
+                    options=init_recording,
                     clearable=False,
                 )
             ]
@@ -127,6 +133,51 @@ app.layout = dbc.Container([
     ])
 ])
 
+# def save_file(name, content):
+#     """Decode and store a file uploaded with Plotly Dash."""
+#     data = content.encode("utf8").split(b";base64,")[1]
+#     with open(os.path.join(r"/SoundInput/", name), "wb") as fp:
+#         fp.write(base64.decodebytes(data))
+
+def save_file(name, content):
+    """Decode and store a file uploaded with Plotly Dash."""
+    
+    # Check if the filename ends with .wav
+    if not name.endswith('.wav'):
+        raise PreventUpdate("File is not a .wav file.")
+
+    # Split the content into metadata and the base64 encoded data
+    content_type, content_string = content.split(',')
+
+    # Decode the base64 data to bytes
+    data = base64.b64decode(content_string)
+    
+    TARGET_DIR = "SoundInput"
+    # Construct the file path
+    file_path = os.path.join(TARGET_DIR, name)
+    
+    # Write the bytes to a file
+    with open(file_path, "wb") as fp:
+        fp.write(data)
+    print(f"File {name} saved to {TARGET_DIR}")
+
+# upload file then save
+@app.callback(
+    Output('alert-message', 'children'),
+    # Output("recording-dropdown", "options"),
+    Input('record-upload', 'filename'),
+    Input('record-upload', 'contents')
+)
+def upload_audio(filename, contents):
+    new_options = get_recordings()
+    if filename is not None and contents is not None:
+        file_extension = os.path.splitext(filename)[1]
+        if file_extension != '.wav':
+            return html.Div('This file type is not allowed. Please upload a .wav file.', style={'color': 'red'})
+        else:
+            save_file(filename, contents)
+            return html.Div(f'Successfully saved {filename} to the server.', style={'color': 'green'})
+        
 # Encode the local .wav file into base64 to serve it inline
 def encode_audio(audio_file_path):
     with open(audio_file_path, 'rb') as audio_file:
@@ -134,7 +185,16 @@ def encode_audio(audio_file_path):
         mime_type = "audio/wav"
         audio_data = f"data:{mime_type};base64,{base64_encoded}"
         return audio_data
-    
+
+# TODO: add refresh list button
+# upload file then save
+@app.callback(
+    Output("recording-dropdown", "options"),
+    Input('reload-file', 'n_clicks')
+)
+def refresh_recordings(clicked):
+    return get_recordings()
+
 #sound selector
 @app.callback(
     Output("audio-output", "children"),#Output("range-slider-callback", "max"),
@@ -208,7 +268,6 @@ def control_recording(record_clicks, recording):
 #display recording and save file recording
 @app.callback(
     Output("recording-dropdown", "value"),
-    Output("recording-dropdown", "options"),
     Input("record-switch", "checked"),
     Input("record_name", "value"),
     prevent_initial_call=True
@@ -229,8 +288,8 @@ def play_audio(recorded,record_name):
                 # wav_bytes = wav_buffer.getvalue()
             path = rf'SoundInput/{record_name}'
             sf.write(path,audio_array, 16000, format="WAV")
-            return path, get_recordings()
-    return "", get_recordings()
+            return path
+    return ""
 
 #append new sample of recording
 @app.callback(
