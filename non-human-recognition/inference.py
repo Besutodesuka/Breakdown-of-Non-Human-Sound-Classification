@@ -1,11 +1,20 @@
 # Assume each input spectrogram has 1024 time frames
-from feature_extraction import ASTModelVis, make_features
+from non_human_recognition.feature_extraction import ASTModelVis, make_features
 import torch
 from torch.cuda.amp import autocast
 import joblib
+import os
+
+
 
 input_tdim = 1024
-filename = "non-human-recognition\classifier\svc_best.pkl"
+filename = r'.\non_human_recognition\classifier\svc_best.pkl'
+if os.path.exists(filename):
+    print("File exists")
+else:
+    print("File does not exist")
+clf = joblib.load(filename)
+
 # now load the visualization model
 ast_mdl = ASTModelVis(label_dim=527, input_tdim=input_tdim, imagenet_pretrain=True, audioset_pretrain=False)
 audio_model = torch.nn.DataParallel(ast_mdl, device_ids=[0])
@@ -16,7 +25,7 @@ else:
     print("Loading feature extract model using cpu")
     audio_model = audio_model.to(torch.device("cpu"))
 audio_model.eval()
-clf = joblib.load(filename)
+
   
 def extract_features(sound_sample_path):
     with torch.no_grad():
