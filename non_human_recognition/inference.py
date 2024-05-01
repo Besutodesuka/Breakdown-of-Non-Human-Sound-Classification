@@ -5,8 +5,6 @@ from torch.cuda.amp import autocast
 import joblib
 import os
 
-
-
 input_tdim = 1024
 filename = r'.\non_human_recognition\classifier\svc_best.pkl'
 if os.path.exists(filename):
@@ -27,9 +25,9 @@ else:
 audio_model.eval()
 
   
-def extract_features(sound_sample_path):
+def extract_features(sound_sample_path,min_id,max_id):
     with torch.no_grad():
-        feats = make_features(sound_sample_path, mel_bins=128)           # shape(1024, 128)
+        feats = make_features(sound_sample_path,min_id,max_id, mel_bins=128)           # shape(1024, 128)
         # only feature extraction
         feats_data = feats.expand(1, input_tdim, 128)
         if torch.cuda.is_available():
@@ -42,9 +40,15 @@ def extract_features(sound_sample_path):
             output = audio_model.forward(feats_data, classifier = False)
     return output
 
-def predict(sound_sample_path):
-    feat = extract_features(sound_sample_path).cpu()
+def predict(sound_sample_path,min_id,max_id):
+    feat = extract_features(sound_sample_path,min_id,max_id).cpu()
     feat = feat.reshape(1,768)
     pred = clf.predict(feat)
     return pred
+
+def vis_mel():
+    pass
+
+def vis_attention():
+    pass
 

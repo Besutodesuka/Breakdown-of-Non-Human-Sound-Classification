@@ -19,6 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 import os
 from dash.exceptions import PreventUpdate
+import torchaudio
 
 audio_samples = []  
 app = dash.Dash(__name__)
@@ -205,7 +206,7 @@ def upload_audio(filename, contents):
         else:
             save_file(filename, contents)
             return html.Div(f'Successfully saved {filename} to the server.', style={'color': 'green'})
-        
+
 # Encode the local .wav file into base64 to serve it inline
 def encode_audio(audio_file_path):
     with open(audio_file_path, 'rb') as audio_file:
@@ -213,7 +214,6 @@ def encode_audio(audio_file_path):
         mime_type = "audio/wav"
         audio_data = f"data:{mime_type};base64,{base64_encoded}"
         return audio_data
-
 
 # upload file then save
 @app.callback(
@@ -226,7 +226,7 @@ def refresh_recordings(clicked):
 # sound selector
 @app.callback(
     Output("audio-output", "children"),
-    # Output("range-slider-callback", "max"),
+    Output("range-slider-callback", "max"),
     Input("recording-dropdown", "value"), 
     State("recording-dropdown", "options"),
 )
@@ -242,9 +242,10 @@ def update_options_and_player(selected_value, options):
         # read file from path
         path = rf'SoundInput/{selected_value}'
         audio_src = encode_audio(path)
-        audio_samples = audio_src
+        audio_samples, sr = torchaudio.load(path) 
         out = html.Audio(src=audio_src, controls=True, style={'width' : '100%'})
-        return out  # Return existing options, updated source
+        lenght = len(audio_samples[0])//sr
+        return out, lenght # Return existing options, updated source
     return ""
 
 # Predict button
@@ -260,24 +261,24 @@ def update_options_and_player(selected_value, options):
 def get_non_human_pred(click, selected_time, filename):
     if click != None:
         if click > 0:
-            sample = torch.tensor(audio_samples[16000*selected_time[0]:16000*selected_time[1]])
+            # sample = torch.tensor(audio_samples[16000*selected_time[0]:16000*selected_time[1]])
             # copy and paste
             # if len(sample.shape) == 1:
             #     sample = sample.repeat(2, 1)
             # print()
             # sf.write(r'SoundInput/nonhooman_sample.wav', np.array(sample), 16000)
-            pred = predict(rf'SoundInput/{filename}')
+            pred = predict(rf'SoundInput/{filename}',selected_time[0],selected_time[1])
             return pred, {'display':'inline'}, 0, None
     return "no result", {'display':'none'}, 0, None
 
-# Range
-@app.callback(
-    Output("range-slider-callback", "max"), 
-    Input("recording-dropdown", "value"), 
-)
-def update_max(val):
-    global audio_samples
-    if val: return len(audio_samples)//16000
+# # Range
+# @app.callback(
+#     Output("range-slider-callback", "max"), 
+#     Input("recording-dropdown", "value"), 
+# )
+# def update_max(val):
+#     global audio_samples
+#     if val: return 
 
 @app.callback(
     Output("range-slider-output", "children"), 

@@ -17,6 +17,7 @@ import os
 import wget
 import timm
 from timm.models.layers import to_2tuple,trunc_normal_
+import torchaudio.transforms as T
 
 # override the timm package to relax the input shape constraint.
 class PatchEmbed(nn.Module):
@@ -224,12 +225,20 @@ class ASTModelVis(ASTModel):
             x = blk(x)
         return att_list
 
-def make_features(wav_name, mel_bins, target_length=1024):
+# Todo: slice sound wave
+def make_features(wav_name,min_id,max_id, mel_bins, target_length=1024):
     waveform, sr = torchaudio.load(wav_name)
-    assert sr == 16000, 'input audio sampling rate must be 16kHz'
-
+    # assert sr == 16000, 'input audio sampling rate must be 16kHz'
+    # print("original" ,waveform.shape)
+    # print(f"{int(sr*min_id)}:{int(sr*max_id)}")
+    waveform = waveform[:, int(min_id):int(max_id)]
+    # print("slice" ,waveform)
+    if sr != 16000:
+        resampler = T.Resample(sr, 16000, dtype=waveform.dtype)
+        waveform = resampler(waveform)
+    # print(waveform)
     fbank = torchaudio.compliance.kaldi.fbank(
-        waveform, htk_compat=True, sample_frequency=sr, use_energy=False,
+        waveform, htk_compat=True, sample_frequency=16000, use_energy=False,
         window_type='hanning', num_mel_bins=mel_bins, dither=0.0, frame_shift=10)
 
     n_frames = fbank.shape[0]
