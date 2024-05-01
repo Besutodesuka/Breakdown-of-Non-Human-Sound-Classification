@@ -1,5 +1,7 @@
 """Example form for receiving sound from the microphone"""
 # credit to https://pypi.org/project/dash-recording-components/
+
+# Import
 import dash
 from dash import html, dcc
 from dash.dependencies import Input, Output, State
@@ -20,12 +22,11 @@ from dash.exceptions import PreventUpdate
 
 audio_samples = []  
 app = dash.Dash(__name__)
-# app.head = html.Link(rel='stylesheet', href='/assets/style.css')
+app.head = html.Link(rel='stylesheet', href='/assets/style.css')
 
-#get all recording
+# Path get all record
 SoundInput = Path(r"./SoundInput")
 
-# @lru_cache(maxsize=None)
 def get_recordings():
     """Returns a list of .wav files in the specified directory."""
     wav_files = [f for f in os.listdir(SoundInput) if f.endswith('.wav')]
@@ -34,110 +35,138 @@ def get_recordings():
 
 init_recording = get_recordings()
 
-app.layout = dbc.Container([
+app.layout = html.Div([
+
     # Header
     html.Br(),
-    dbc.Row([
-         html.H1("Non-Human"),
-        html.H2("Sound Classification"),
-    ],justify="center"),
-    html.Br(),
-
-    # Record
-    # html.Button(children='Start', id='record', n_clicks=0),
-    dbc.Row([
-        dbc.Col([
-            dmc.TextInput(label="Your record name:",placeholder="recording.wav",value="test.wav", w=200,id="record_name"),
-            html.H4("Click to start recording"),
-            # add input for naming file record
-            dmc.Switch(
-                id="record-switch", 
-                label="Start record", 
-                checked=False,
-                offLabel=DashIconify(icon="tabler:microphone-off", width=20),
-                onLabel=DashIconify(icon="mdi:microphone", width=20),
-                size="lg",
-                color="green",
-                )
-        ],width=5),
-        dbc.Col([
-            html.H3("or", )
-            ],
-         width=2),
-        dbc.Col([
-                dcc.Upload([
-                    'Drag and Drop or ',
-                    html.A('Select a File'),
-                ]
-                ,id="record-upload"
-                ,multiple=False  # Allow multiple files to be uploaded
-                ,accept='.wav'  # Only 
-                ,style={       'width': '500px',
-                    'height': '60px',
-                    'lineHeight': '60px',
-                    'borderWidth': '1px',
-                    'borderStyle': 'dashed',
-                    'borderRadius': '5px',
-                    'textAlign': 'center'
-                }
-        ),
-        html.Div(id="alert-message"),
-        ]),
-    # dat selection
+    html.H1("Non-Human"),
+    html.H2("Sound Classification", 
+        style={'padding-bottom': '0.5rem'}),
     
-    dbc.Row([html.H3("Select file that you want to inferences on"),]),
-    dmc.Button("refresh", variant="gradient", id="reload-file",),
-    html.Div(
-            [
-                dcc.Dropdown(
-                    id="recording-dropdown",
-                    options=init_recording,
-                    clearable=False,
-                )
-            ]
-    ),
-    # Play Record
-    html.Br(),
-    html.Div(id="audio-output"),
-    html.Div(id="dummy-output", style={"display": "none"}),
-
-    AudioRecorder(id="audio-recorder"),
-
-    html.H5("Choose the duration to predict"),
-    # choose range
     html.Div([
-        dmc.RangeSlider(
-            id="range-slider-callback",
-            value=[0,len(audio_samples)],
-            mb=5,
-            min=0, 
-            max=len(audio_samples), 
-            step=1,
-            minRange=3,
-            maxRange=5,
+        # Record
+        dbc.Row([
+            html.H5("Your record name : ", style={'display':'inline'}),
+            dcc.Input(
+                type="text",
+                placeholder="recording.wav",
+                value="test.wav", 
+                id="record_name",
+                style={'width' : '20rem', 'height' : '3.5rem'}
+            ),
+        ], style={'padding-bottom': '0.5rem'}),
+
+        html.H5("Click to start recording"),
+        html.Div([
+            dmc.Button(
+                DashIconify(icon="mdi:microphone", width=100, color='white'), 
+                className='record',
+                id="record"
+            ),
+            
+            dmc.Button(
+                DashIconify(icon="bi:stop-fill", width=100, color='white'), 
+                className='stoprec',
+                style={"display": "none"},
+                id="stoprec"
+            ),
+        ], style={'text-align' : 'center'}),
+
+        dmc.Switch(
+            id="record-switch", 
+            label="Start record", 
+            checked=False,
+            offLabel=DashIconify(icon="tabler:microphone-off", width=20),
+            onLabel=DashIconify(icon="mdi:microphone", width=20),
+            size="lg",
+            color="green",
+            style={"display": "none"}
         ),
-        dmc.Text(id="range-slider-output"),
+
+        html.Div('or', className='hr-sect'),
+
+        # Uploading files
+        html.H5("Uploading .wav file"),
+
+        dcc.Upload([
+            'Drag and Drop or ',
+            html.A('Select a File')
+        ], 
+        id="record-upload",
+        multiple=False,
+        accept='.wav',
+        style={
+            'width': '100%',
+            'height': '60px',
+            'lineHeight': '60px',
+            'borderWidth': '1px',
+            'borderStyle': 'dashed',
+            'borderRadius': '5px',
+            'textAlign': 'center'
+        }),
+        html.Div(id="alert-message"),
+
+        # Select File
+        html.H5("Select file that you want to inference on"),
+        dcc.Dropdown(
+            id="recording-dropdown",
+            options=init_recording,
+            clearable=False,
+            style={'color':'black'},
+        ),
+        html.Button("Refresh", id="reload-file", className='refresh'),
+        # Play Record
+        html.Div(
+            style={'padding-top': '1.5rem'}, 
+            id="audio-output"
+        ),
+        html.Div(id="dummy-output", style={"display": "none"}),
+        AudioRecorder(id="audio-recorder"),
+
+        html.H5(id='len'),
+        # Choose range
+        html.H5("Choose the duration to inference"),
+        html.Div([
+            dmc.RangeSlider(
+                id="range-slider-callback",
+                value=[0,len(audio_samples)],
+                mb=5,
+                min=0, 
+                max=len(audio_samples), 
+                step=1,
+                minRange=3,
+                maxRange=5,
+            ),
+            dmc.Text(id="range-slider-output"),
+        ]),
+
+        # Predict button
+        html.Br(),
+        html.A([
+            dmc.Button("Predict", variant="gradient", id="predict-nonhuman"),
+        ], href="#end"),
     ]),
-    
-    #Predict button
-    html.Br(),
-    dmc.Button("Predict", variant="gradient", id="predict-nonhuman"),
-    #Loading
+
+    # Loading
     dcc.Loading(
         id="ls-loading", 
         children=[html.Div(id="ls-loading-output")], 
         type="circle", 
-        style={'margin-top': '8em'}
+        style={'margin-top': '8.5em'}
     ),
-    dmc.Text(id="nonhuman_result"),
-    ])
-])
 
-# def save_file(name, content):
-#     """Decode and store a file uploaded with Plotly Dash."""
-#     data = content.encode("utf8").split(b";base64,")[1]
-#     with open(os.path.join(r"/SoundInput/", name), "wb") as fp:
-#         fp.write(base64.decodebytes(data))
+    html.Br(),
+    # Result
+    html.Div([
+        html.Div([
+            dmc.Text(
+                id="nonhuman_result", 
+                className='answer', 
+                style={'display':'none'}),
+        ], style={'width' : 'fit-content', 'margin' : 'auto'}),
+    ], id="end", style={'height' : '10rem'})
+], 
+style={'width' : '95%', 'margin' : 'auto', 'position': 'relative'})
 
 def save_file(name, content):
     """Decode and store a file uploaded with Plotly Dash."""
@@ -164,7 +193,6 @@ def save_file(name, content):
 # upload file then save
 @app.callback(
     Output('alert-message', 'children'),
-    # Output("recording-dropdown", "options"),
     Input('record-upload', 'filename'),
     Input('record-upload', 'contents')
 )
@@ -186,7 +214,7 @@ def encode_audio(audio_file_path):
         audio_data = f"data:{mime_type};base64,{base64_encoded}"
         return audio_data
 
-# TODO: add refresh list button
+
 # upload file then save
 @app.callback(
     Output("recording-dropdown", "options"),
@@ -195,16 +223,19 @@ def encode_audio(audio_file_path):
 def refresh_recordings(clicked):
     return get_recordings()
 
-#sound selector
+# sound selector
 @app.callback(
-    Output("audio-output", "children"),#Output("range-slider-callback", "max"),
-    Input("recording-dropdown", "value"), State("recording-dropdown", "options"),
+    Output("audio-output", "children"),
+    # Output("range-slider-callback", "max"),
+    Input("recording-dropdown", "value"), 
+    State("recording-dropdown", "options"),
 )
 def update_options_and_player(selected_value, options):
     global audio_samples
+    audio_samples = []
     new_options = get_recordings()
     if new_options != options:
-        return ""  # Return new options, empty source initially
+        return "" # Return new options, empty source initially
     # Only update source if a recording is selected
     print(selected_value)
     if selected_value:
@@ -212,21 +243,21 @@ def update_options_and_player(selected_value, options):
         path = rf'SoundInput/{selected_value}'
         audio_src = encode_audio(path)
         audio_samples = audio_src
-        out = html.Audio(src=audio_src, controls=True)
+        out = html.Audio(src=audio_src, controls=True, style={'width' : '100%'})
         return out  # Return existing options, updated source
     return ""
-    # return options  # No selection, return existing options, empty source
 
-#Predict button
+# Predict button
 @app.callback(
     Output("nonhuman_result", "children"),
+    Output("nonhuman_result", component_property='style'),
     Output("predict-nonhuman", "n_clicks"),
     Output("ls-loading-output", "children"),
     Input("predict-nonhuman", "n_clicks"),
     Input("range-slider-callback", "value"),
     Input("recording-dropdown", "value"),
 )
-def get_non_human_pred(click, selected_time,filename):
+def get_non_human_pred(click, selected_time, filename):
     if click != None:
         if click > 0:
             sample = torch.tensor(audio_samples[16000*selected_time[0]:16000*selected_time[1]])
@@ -236,23 +267,26 @@ def get_non_human_pred(click, selected_time,filename):
             # print()
             # sf.write(r'SoundInput/nonhooman_sample.wav', np.array(sample), 16000)
             pred = predict(rf'SoundInput/{filename}')
-            return pred, 0, None
-    return "no result", 0, None
+            return pred, {'display':'inline'}, 0, None
+    return "no result", {'display':'none'}, 0, None
 
+# Range
 @app.callback(
-    Output("range-slider-callback", "max"), Input("recording-dropdown", "value"),
+    Output("range-slider-callback", "max"), 
+    Input("recording-dropdown", "value"), 
 )
 def update_max(val):
+    global audio_samples
     if val: return len(audio_samples)//16000
 
-# update slider time range
 @app.callback(
-    Output("range-slider-output", "children"), Input("range-slider-callback", "value")
+    Output("range-slider-output", "children"), 
+    Input("range-slider-callback", "value")
 )
 def update_value(value):
     return f"You have selected: [{value[0]}, {value[1]}]"
 
-#swicth record mode
+# Swicth record mode
 @app.callback(
     Output("audio-recorder", "recording"),
     Input("record-switch", "checked"),
@@ -265,7 +299,23 @@ def control_recording(record_clicks, recording):
     else:
         return False
 
-#display recording and save file recording
+# Record voice
+@app.callback(
+    Output("record-switch", "checked"),
+    Output("record", "n_clicks"),
+    Output("stoprec", "n_clicks"),
+    Output("record", component_property='style'),
+    Output("stoprec", component_property='style'),
+    Input("record", "n_clicks"),
+    Input("stoprec", "n_clicks"),
+)
+def recbutton(rec, notrec):
+    if rec > 0:
+        return True, 0, 0, {'display':'None'}, {'display':'inline'}
+    elif notrec > 0:
+        return False, 0, 0, {'display':'inline'}, {'display':'None'}
+
+# Display recording and save file recording
 @app.callback(
     Output("recording-dropdown", "value"),
     Input("record-switch", "checked"),
@@ -287,11 +337,11 @@ def play_audio(recorded,record_name):
                 # sf.write(wav_buffer, audio_array, 16000, format="WAV")
                 # wav_bytes = wav_buffer.getvalue()
             path = rf'SoundInput/{record_name}'
-            sf.write(path,audio_array, 16000, format="WAV")
+            sf.write(path, audio_array, 16000, format="WAV")
             return path
     return ""
 
-#append new sample of recording
+# Append new sample of recording
 @app.callback(
     Output("dummy-output", "children"),
     Input("audio-recorder", "audio"),
@@ -307,16 +357,3 @@ def update_audio(audio):
 
 if __name__ == "__main__":
     app.run_server(debug=True)
-
-# ,style={'width' : '95%', 'margin' : 'auto'}
-# Record
-# @app.callback(Output('record', 'children'),
-#               Input('record', 'n_clicks'))
-
-# def displayClick(num_click):
-#     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-#     if 'record' in changed_id:
-#         if num_click%2==0:
-#             return True
-#         else:
-#            return False
