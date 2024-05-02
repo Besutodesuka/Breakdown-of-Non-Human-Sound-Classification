@@ -19,6 +19,8 @@ from functools import lru_cache
 from pathlib import Path
 import os
 from dash.exceptions import PreventUpdate
+import torchaudio
+import plotly.express as px
 
 audio_samples = []  
 app = dash.Dash(__name__)
@@ -135,7 +137,7 @@ app.layout = html.Div([
                 max=len(audio_samples), 
                 step=1,
                 minRange=3,
-                maxRange=5,
+                maxRange=15,
             ),
             dmc.Text(id="range-slider-output"),
         ]),
@@ -164,7 +166,9 @@ app.layout = html.Div([
                 className='answer', 
                 style={'display':'none'}),
         ], style={'width' : 'fit-content', 'margin' : 'auto'}),
-    ], id="end", style={'height' : '10rem'})
+    ], id="end", style={'height' : '10rem'}),
+    dcc.Graph(id='mel-spectrogram'),
+    html.Div(id='att_map-container')
 ], 
 style={'width' : '95%', 'margin' : 'auto', 'position': 'relative'})
 
@@ -205,7 +209,7 @@ def upload_audio(filename, contents):
         else:
             save_file(filename, contents)
             return html.Div(f'Successfully saved {filename} to the server.', style={'color': 'green'})
-        
+
 # Encode the local .wav file into base64 to serve it inline
 def encode_audio(audio_file_path):
     with open(audio_file_path, 'rb') as audio_file:
@@ -213,7 +217,6 @@ def encode_audio(audio_file_path):
         mime_type = "audio/wav"
         audio_data = f"data:{mime_type};base64,{base64_encoded}"
         return audio_data
-
 
 # upload file then save
 @app.callback(
@@ -226,7 +229,7 @@ def refresh_recordings(clicked):
 # sound selector
 @app.callback(
     Output("audio-output", "children"),
-    # Output("range-slider-callback", "max"),
+    Output("range-slider-callback", "max"),
     Input("recording-dropdown", "value"), 
     State("recording-dropdown", "options"),
 )
@@ -242,17 +245,21 @@ def update_options_and_player(selected_value, options):
         # read file from path
         path = rf'SoundInput/{selected_value}'
         audio_src = encode_audio(path)
-        audio_samples = audio_src
+        audio_samples, sr = torchaudio.load(path) 
         out = html.Audio(src=audio_src, controls=True, style={'width' : '100%'})
-        return out  # Return existing options, updated source
+        lenght = len(audio_samples[0])//sr
+        return out, lenght # Return existing options, updated source
     return ""
 
+# update mel-spec graph
 # Predict button
 @app.callback(
     Output("nonhuman_result", "children"),
     Output("nonhuman_result", component_property='style'),
     Output("predict-nonhuman", "n_clicks"),
     Output("ls-loading-output", "children"),
+    Output('mel-spectrogram', 'figure'),
+    Output('att_map-container', 'children'),
     Input("predict-nonhuman", "n_clicks"),
     Input("range-slider-callback", "value"),
     Input("recording-dropdown", "value"),
@@ -260,24 +267,43 @@ def update_options_and_player(selected_value, options):
 def get_non_human_pred(click, selected_time, filename):
     if click != None:
         if click > 0:
-            sample = torch.tensor(audio_samples[16000*selected_time[0]:16000*selected_time[1]])
+            # sample = torch.tensor(audio_samples[16000*selected_time[0]:16000*selected_time[1]])
             # copy and paste
             # if len(sample.shape) == 1:
             #     sample = sample.repeat(2, 1)
             # print()
             # sf.write(r'SoundInput/nonhooman_sample.wav', np.array(sample), 16000)
-            pred = predict(rf'SoundInput/{filename}')
-            return pred, {'display':'inline'}, 0, None
-    return "no result", {'display':'none'}, 0, None
+            pred, att_list, mel = predict(rf'SoundInput/{filename}',selected_time[0],selected_time[1])
+            mel = mel.numpy()
+            # mel = 
+            fig = px.imshow(mel.T, labels={'x':'Time Frame', 'y':'Mel Bin', 'color':'Magnitude'}, origin='lower')
+            fig.update_layout(title='Mel Spectrogram')
+            att_fig_list = []
+            for i in range(len(att_list)):
+                att_list[i] = att_list[i].data.cpu().numpy()
+                att_list[i] = np.mean(att_list[i][0], axis=0)
+                att_list[i] = np.mean(att_list[i][0:2], axis=0)
+                att_list[i] = att_list[i][2:].reshape(12, 101)
+                figa = px.imshow(att_list[i], origin='lower')
+                figa.update_layout(title='Mean Attention Map of Layer #{:d}'.format(i))
+                figa.layout.coloraxis.showscale = False
+                att_fig_list.append(dcc.Graph(figure=figa))
 
-# Range
-@app.callback(
-    Output("range-slider-callback", "max"), 
-    Input("recording-dropdown", "value"), 
-)
-def update_max(val):
-    global audio_samples
-    if val: return len(audio_samples)//16000
+            return pred, {'display':'inline'}, 0, None, fig, att_fig_list
+    dummy_mel = px.imshow([[0]], labels={'x':'Time Frame', 'y':'Mel Bin', 'color':'Magnitude'}, origin='lower')
+    dummy_mel.update_layout(title='Mel Spectrogram')
+    dummy_att = px.imshow([[0]], origin='lower')
+    dummy_att.update_layout(title='Mean Attention Map')
+    return "no result", {'display':'none'}, 0, None, dummy_mel, dcc.Graph(figure=dummy_att)
+
+# # Range
+# @app.callback(
+#     Output("range-slider-callback", "max"), 
+#     Input("recording-dropdown", "value"), 
+# )
+# def update_max(val):
+#     global audio_samples
+#     if val: return 
 
 @app.callback(
     Output("range-slider-output", "children"), 
