@@ -231,7 +231,7 @@ def make_features(wav_name,min_id,max_id, mel_bins, target_length=1024):
     # assert sr == 16000, 'input audio sampling rate must be 16kHz'
     # print("original" ,waveform.shape)
     # print(f"{int(sr*min_id)}:{int(sr*max_id)}")
-    waveform = waveform[:, int(min_id):int(max_id)]
+    waveform = waveform[:, int(min_id)*sr:int(max_id)*sr]
     # print("slice" ,waveform)
     if sr != 16000:
         resampler = T.Resample(sr, 16000, dtype=waveform.dtype)

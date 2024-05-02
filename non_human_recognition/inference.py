@@ -27,7 +27,7 @@ audio_model.eval()
   
 def extract_features(sound_sample_path,min_id,max_id):
     with torch.no_grad():
-        feats = make_features(sound_sample_path,min_id,max_id, mel_bins=128)           # shape(1024, 128)
+        feats = make_features(sound_sample_path,min_id,max_id, mel_bins=128)  # shape(1024, 128)
         # only feature extraction
         feats_data = feats.expand(1, input_tdim, 128)
         if torch.cuda.is_available():
@@ -38,17 +38,13 @@ def extract_features(sound_sample_path,min_id,max_id):
             feats_data = feats_data.to(torch.device("cpu"))           # reshape the feature
         with autocast():
             output = audio_model.forward(feats_data, classifier = False)
-    return output
+            att_list = audio_model.module.forward_visualization(feats_data)
+    return output, att_list, feats
 
 def predict(sound_sample_path,min_id,max_id):
-    feat = extract_features(sound_sample_path,min_id,max_id).cpu()
+    feat, att_list, mel = extract_features(sound_sample_path,min_id,max_id)    # shape(1024, 128)
+    feat = feat.cpu()
     feat = feat.reshape(1,768)
     pred = clf.predict(feat)
-    return pred
-
-def vis_mel():
-    pass
-
-def vis_attention():
-    pass
+    return pred, att_list, mel
 

@@ -20,6 +20,7 @@ from pathlib import Path
 import os
 from dash.exceptions import PreventUpdate
 import torchaudio
+import plotly.express as px
 
 audio_samples = []  
 app = dash.Dash(__name__)
@@ -136,7 +137,7 @@ app.layout = html.Div([
                 max=len(audio_samples), 
                 step=1,
                 minRange=3,
-                maxRange=5,
+                maxRange=15,
             ),
             dmc.Text(id="range-slider-output"),
         ]),
@@ -165,7 +166,9 @@ app.layout = html.Div([
                 className='answer', 
                 style={'display':'none'}),
         ], style={'width' : 'fit-content', 'margin' : 'auto'}),
-    ], id="end", style={'height' : '10rem'})
+    ], id="end", style={'height' : '10rem'}),
+    dcc.Graph(id='mel-spectrogram'),
+    html.Div(id='att_map-container')
 ], 
 style={'width' : '95%', 'margin' : 'auto', 'position': 'relative'})
 
@@ -248,12 +251,15 @@ def update_options_and_player(selected_value, options):
         return out, lenght # Return existing options, updated source
     return ""
 
+# update mel-spec graph
 # Predict button
 @app.callback(
     Output("nonhuman_result", "children"),
     Output("nonhuman_result", component_property='style'),
     Output("predict-nonhuman", "n_clicks"),
     Output("ls-loading-output", "children"),
+    Output('mel-spectrogram', 'figure'),
+    Output('att_map-container', 'children'),
     Input("predict-nonhuman", "n_clicks"),
     Input("range-slider-callback", "value"),
     Input("recording-dropdown", "value"),
@@ -267,9 +273,28 @@ def get_non_human_pred(click, selected_time, filename):
             #     sample = sample.repeat(2, 1)
             # print()
             # sf.write(r'SoundInput/nonhooman_sample.wav', np.array(sample), 16000)
-            pred = predict(rf'SoundInput/{filename}',selected_time[0],selected_time[1])
-            return pred, {'display':'inline'}, 0, None
-    return "no result", {'display':'none'}, 0, None
+            pred, att_list, mel = predict(rf'SoundInput/{filename}',selected_time[0],selected_time[1])
+            mel = mel.numpy()
+            # mel = 
+            fig = px.imshow(mel.T, labels={'x':'Time Frame', 'y':'Mel Bin', 'color':'Magnitude'}, origin='lower')
+            fig.update_layout(title='Mel Spectrogram')
+            att_fig_list = []
+            for i in range(len(att_list)):
+                att_list[i] = att_list[i].data.cpu().numpy()
+                att_list[i] = np.mean(att_list[i][0], axis=0)
+                att_list[i] = np.mean(att_list[i][0:2], axis=0)
+                att_list[i] = att_list[i][2:].reshape(12, 101)
+                figa = px.imshow(att_list[i], origin='lower')
+                figa.update_layout(title='Mean Attention Map of Layer #{:d}'.format(i))
+                figa.layout.coloraxis.showscale = False
+                att_fig_list.append(dcc.Graph(figure=figa))
+
+            return pred, {'display':'inline'}, 0, None, fig, att_fig_list
+    dummy_mel = px.imshow([[0]], labels={'x':'Time Frame', 'y':'Mel Bin', 'color':'Magnitude'}, origin='lower')
+    dummy_mel.update_layout(title='Mel Spectrogram')
+    dummy_att = px.imshow([[0]], origin='lower')
+    dummy_att.update_layout(title='Mean Attention Map')
+    return "no result", {'display':'none'}, 0, None, dummy_mel, dcc.Graph(figure=dummy_att)
 
 # # Range
 # @app.callback(
